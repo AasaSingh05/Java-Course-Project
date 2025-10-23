@@ -30,7 +30,7 @@
 │   ├─ trains.db                          // SQLite database with train & passenger tables
 │
 ├─ output/
-│   ├─ tickets.ser                        // Serialized tickets storage
+│   ├─ tickets.txt                        // Serialized tickets storage
 │   ├─ passengers.txt                     // Passenger info storage
 │
 ├─ libs/
