@@ -9,10 +9,10 @@ public class TrainService {
 
     public TrainService() {
         trainMap = new HashMap<>();
-        // Sample trains
-        trainMap.put(1, new Train(1, "Express A", 100));
-        trainMap.put(2, new Train(2, "Express B", 50));
-        trainMap.put(3, new Train(3, "Express C", 75));
+        // Sample trains with explicit prices
+        trainMap.put(1, new Train(1, "Express A", 100, 120.0));
+        trainMap.put(2, new Train(2, "Express B", 50, 150.0));
+        trainMap.put(3, new Train(3, "Express C", 75, 90.0));
     }
 
     public void addTrain(Train train) {

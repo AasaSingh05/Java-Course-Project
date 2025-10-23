@@ -13,8 +13,11 @@ import models.Train;
 import services.BookingService;
 import services.PassengerService;
 import services.TrainService;
+import persistence.FileHandler;
 
+import java.text.NumberFormat;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class BookingUI extends Application {
@@ -26,12 +29,13 @@ public class BookingUI extends Application {
     private final AtomicInteger passengerIdSeq = new AtomicInteger(1000); // simple id generator for new passengers
 
     private ListView<String> trainListView;
-    private ListView<String> passengerListView; // kept for visibility of existing passengers
+    private ListView<String> passengerListView;
     private TextArea bookingHistoryArea;
+
+    private final NumberFormat currencyFmt = NumberFormat.getCurrencyInstance(Locale.getDefault());
 
     @Override
     public void start(Stage primaryStage) {
-        // --- Layouts ---
         VBox root = new VBox(10);
         root.setPadding(new Insets(10));
 
@@ -126,13 +130,21 @@ public class BookingUI extends Application {
                 Passenger newPassenger = new Passenger(newId, name, balance);
                 passengerService.addPassenger(newPassenger);
 
-                double costPerSeat = 100; // fixed cost
+                // Use train-specific price per seat
+                double costPerSeat = train.getPricePerSeat();
                 Ticket ticket = bookingService.bookTicket(newPassenger, train, seats, costPerSeat);
 
-                showAlert("Success", "Ticket booked successfully!\n" + ticket.toString());
+                double total = seats * costPerSeat;
+                showAlert("Success", "Ticket booked successfully!\n"
+                        + ticket.toString() + "\nTotal: " + currencyFmt.format(total));
+
                 updateTrainList();
                 updatePassengerList();
                 updateBookingHistory();
+
+                // Persist immediately (optional if you have shutdown hook)
+                FileHandler.savePassengers(passengerService.getAllPassengers(), "output/passengers.txt");
+                FileHandler.saveTickets(bookingService.getBookingHistory(), "output/tickets.txt");
 
                 // Clear inputs after success
                 nameField.clear();
@@ -143,7 +155,6 @@ public class BookingUI extends Application {
             }
         });
 
-        // --- Scene ---
         Scene scene = new Scene(root, 720, 480);
         primaryStage.setTitle("Railway Reservation System");
         primaryStage.setScene(scene);
@@ -153,7 +164,12 @@ public class BookingUI extends Application {
     private void updateTrainList() {
         trainListView.getItems().clear();
         for (Train t : trainService.getAllTrains()) {
-            trainListView.getItems().add(t.getTrainId() + ": " + t.getTrainName() + " (Available: " + t.getAvailableSeats() + ")");
+            String price = currencyFmt.format(t.getPricePerSeat());
+            trainListView.getItems().add(
+                t.getTrainId() + ": " + t.getTrainName()
+                + " (Available: " + t.getAvailableSeats() + ")"
+                + " — Price: " + price
+            );
         }
     }
 

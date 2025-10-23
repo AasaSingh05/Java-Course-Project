@@ -7,17 +7,14 @@ public class Train implements Serializable {
     private String trainName;
     private int totalSeats;
     private int availableSeats;
-    private double pricePerSeat; 
+    private double pricePerSeat; // NEW
 
+    // Legacy constructor keeps compatibility with existing code; assigns a default price
     public Train(int trainId, String trainName, int totalSeats) {
-        this.trainId = trainId;
-        this.trainName = trainName;
-        this.totalSeats = totalSeats;
-        this.availableSeats = totalSeats;
-        this.pricePerSeat = 100.0; // default if legacy constructor used
+        this(trainId, trainName, totalSeats, 100.0);
     }
 
-    // New convenience constructor
+    // New constructor with price
     public Train(int trainId, String trainName, int totalSeats, double pricePerSeat) {
         this.trainId = trainId;
         this.trainName = trainName;
@@ -26,12 +23,27 @@ public class Train implements Serializable {
         this.pricePerSeat = pricePerSeat;
     }
 
-    public int getTrainId() { return trainId; }
-    public String getTrainName() { return trainName; }
-    public int getTotalSeats() { return totalSeats; }
-    public int getAvailableSeats() { return availableSeats; }
-    public double getPricePerSeat() { return pricePerSeat; } // NEW
+    public int getTrainId() {
+        return trainId;
+    }
 
+    public String getTrainName() {
+        return trainName;
+    }
+
+    public int getTotalSeats() {
+        return totalSeats;
+    }
+
+    public int getAvailableSeats() {
+        return availableSeats;
+    }
+
+    public double getPricePerSeat() { // NEW
+        return pricePerSeat;
+    }
+
+    // Synchronized booking to prevent overbooking
     public synchronized boolean bookSeats(int numSeats) {
         if (numSeats <= 0) return false;
         if (numSeats <= availableSeats) {
