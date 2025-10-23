@@ -4,12 +4,15 @@ import models.Train;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * In-memory train catalog with convenience lookup and demo seed data.
+ */
 public class TrainService {
     private Map<Integer, Train> trainMap;
 
     public TrainService() {
         trainMap = new HashMap<>();
-        // Sample trains with explicit prices
+        // Seed sample trains with explicit prices per seat to display and bill against.
         trainMap.put(1, new Train(1, "Express A", 100, 120.0));
         trainMap.put(2, new Train(2, "Express B", 50, 150.0));
         trainMap.put(3, new Train(3, "Express C", 75, 90.0));

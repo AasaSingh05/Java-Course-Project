@@ -2,19 +2,28 @@ package models;
 
 import java.io.Serializable;
 
+/**
+ * Domain model for a Train.
+ * Holds identity, naming, seating capacity, live availability, and price per seat.
+ */
 public class Train implements Serializable {
     private int trainId;
     private String trainName;
     private int totalSeats;
     private int availableSeats;
-    private double pricePerSeat; // NEW
+    private double pricePerSeat;
 
-    // Legacy constructor keeps compatibility with existing code; assigns a default price
+    /**
+     * Legacy constructor that keeps existing call sites working.
+     * Assigns a sensible default price when not specified.
+     */
     public Train(int trainId, String trainName, int totalSeats) {
         this(trainId, trainName, totalSeats, 100.0);
     }
 
-    // New constructor with price
+    /**
+     * Primary constructor that also sets the price per seat.
+     */
     public Train(int trainId, String trainName, int totalSeats, double pricePerSeat) {
         this.trainId = trainId;
         this.trainName = trainName;
@@ -23,27 +32,23 @@ public class Train implements Serializable {
         this.pricePerSeat = pricePerSeat;
     }
 
-    public int getTrainId() {
-        return trainId;
-    }
+    public int getTrainId() { return trainId; }
 
-    public String getTrainName() {
-        return trainName;
-    }
+    public String getTrainName() { return trainName; }
 
-    public int getTotalSeats() {
-        return totalSeats;
-    }
+    public int getTotalSeats() { return totalSeats; }
 
-    public int getAvailableSeats() {
-        return availableSeats;
-    }
+    public int getAvailableSeats() { return availableSeats; }
 
-    public double getPricePerSeat() { // NEW
-        return pricePerSeat;
-    }
+    /**
+     * Price used to compute booking charges.
+     */
+    public double getPricePerSeat() { return pricePerSeat; }
 
-    // Synchronized booking to prevent overbooking
+    /**
+     * Attempts to reserve seats atomically.
+     * Returns true if reservation succeeds, false if insufficient seats.
+     */
     public synchronized boolean bookSeats(int numSeats) {
         if (numSeats <= 0) return false;
         if (numSeats <= availableSeats) {
@@ -53,6 +58,9 @@ public class Train implements Serializable {
         return false;
     }
 
+    /**
+     * Releases seats back to availability and clamps to total capacity.
+     */
     public synchronized void cancelSeats(int numSeats) {
         availableSeats += numSeats;
         if (availableSeats > totalSeats) availableSeats = totalSeats;
@@ -60,7 +68,10 @@ public class Train implements Serializable {
 
     @Override
     public String toString() {
-        return "Train [ID=" + trainId + ", Name=" + trainName + ", TotalSeats=" + totalSeats
-                + ", AvailableSeats=" + availableSeats + ", PricePerSeat=" + pricePerSeat + "]";
+        return "Train [ID=" + trainId
+                + ", Name=" + trainName
+                + ", TotalSeats=" + totalSeats
+                + ", AvailableSeats=" + availableSeats
+                + ", PricePerSeat=" + pricePerSeat + "]";
     }
 }

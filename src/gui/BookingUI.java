@@ -20,40 +20,48 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * JavaFX UI for browsing trains, creating passengers from user input,
+ * booking tickets at train-specific prices, and viewing booking history.
+ */
 public class BookingUI extends Application {
 
+    // Services provide in-memory data and booking operations.
     private final TrainService trainService = new TrainService();
     private final PassengerService passengerService = new PassengerService();
     private final BookingService bookingService = new BookingService();
 
-    private final AtomicInteger passengerIdSeq = new AtomicInteger(1000); // simple id generator for new passengers
+    // Simple local ID generator for ad-hoc passengers created from the form.
+    private final AtomicInteger passengerIdSeq = new AtomicInteger(1000);
 
+    // UI nodes shared across methods.
     private ListView<String> trainListView;
     private ListView<String> passengerListView;
     private TextArea bookingHistoryArea;
 
+    // Currency formatting for price rendering and total cost display.
     private final NumberFormat currencyFmt = NumberFormat.getCurrencyInstance(Locale.getDefault());
 
     @Override
     public void start(Stage primaryStage) {
+        // Root layout and spacing.
         VBox root = new VBox(10);
         root.setPadding(new Insets(10));
 
+        // Side-by-side lists: trains and current passengers.
         HBox listsBox = new HBox(10);
 
-        // Train List
         trainListView = new ListView<>();
         updateTrainList();
         VBox trainBox = new VBox(5, new Label("Available Trains:"), trainListView);
 
-        // Passenger List (shows existing passengers)
         passengerListView = new ListView<>();
         updatePassengerList();
         VBox passengerBox = new VBox(5, new Label("Existing Passengers:"), passengerListView);
 
         listsBox.getChildren().addAll(trainBox, passengerBox);
 
-        // Booking Section with user inputs
+        // Booking form for creating a passenger and booking seats.
         GridPane bookingGrid = new GridPane();
         bookingGrid.setHgap(10);
         bookingGrid.setVgap(8);
@@ -74,14 +82,24 @@ public class BookingUI extends Application {
         bookingGrid.addRow(2, new Label("Tickets:"), seatsField);
         bookingGrid.add(bookButton, 1, 3);
 
-        // Booking History
+        // Area to print successful bookings line-by-line.
         bookingHistoryArea = new TextArea();
         bookingHistoryArea.setEditable(false);
         bookingHistoryArea.setPrefHeight(200);
 
-        root.getChildren().addAll(listsBox, new Label("New Booking:"), bookingGrid, new Label("Booking History:"), bookingHistoryArea);
+        root.getChildren().addAll(
+                listsBox,
+                new Label("New Booking:"),
+                bookingGrid,
+                new Label("Booking History:"),
+                bookingHistoryArea
+        );
 
-        // --- Button Action ---
+        // Booking action:
+        // 1) Validate inputs.
+        // 2) Create a Passenger from the form.
+        // 3) Use the train's price-per-seat for billing.
+        // 4) Persist lists to text files for durability between runs.
         bookButton.setOnAction(e -> {
             String selectedTrain = trainListView.getSelectionModel().getSelectedItem();
             if (selectedTrain == null) {
@@ -122,15 +140,17 @@ public class BookingUI extends Application {
             }
 
             try {
+                // Parse selected train id from list cell prefix "id: name ..."
                 int trainId = Integer.parseInt(selectedTrain.split(":")[0]);
+
                 Train train = trainService.getTrainById(trainId);
 
-                // Create a new Passenger on the fly and add to service
+                // Create and add a new passenger to the in-memory store.
                 int newId = passengerIdSeq.getAndIncrement();
                 Passenger newPassenger = new Passenger(newId, name, balance);
                 passengerService.addPassenger(newPassenger);
 
-                // Use train-specific price per seat
+                // Bill using the train-specific price.
                 double costPerSeat = train.getPricePerSeat();
                 Ticket ticket = bookingService.bookTicket(newPassenger, train, seats, costPerSeat);
 
@@ -138,15 +158,16 @@ public class BookingUI extends Application {
                 showAlert("Success", "Ticket booked successfully!\n"
                         + ticket.toString() + "\nTotal: " + currencyFmt.format(total));
 
+                // Refresh UI lists and history after booking.
                 updateTrainList();
                 updatePassengerList();
                 updateBookingHistory();
 
-                // Persist immediately (optional if you have shutdown hook)
+                // Persist to text files for durability.
                 FileHandler.savePassengers(passengerService.getAllPassengers(), "output/passengers.txt");
                 FileHandler.saveTickets(bookingService.getBookingHistory(), "output/tickets.txt");
 
-                // Clear inputs after success
+                // Clear form fields after success.
                 nameField.clear();
                 balanceField.clear();
                 seatsField.clear();
@@ -161,6 +182,9 @@ public class BookingUI extends Application {
         primaryStage.show();
     }
 
+    /**
+     * Rebuilds the train list with live availability and formatted price per seat.
+     */
     private void updateTrainList() {
         trainListView.getItems().clear();
         for (Train t : trainService.getAllTrains()) {
@@ -173,13 +197,21 @@ public class BookingUI extends Application {
         }
     }
 
+    /**
+     * Shows the current passengers for visibility and quick checks.
+     */
     private void updatePassengerList() {
         passengerListView.getItems().clear();
         for (Passenger p : passengerService.getAllPassengers()) {
-            passengerListView.getItems().add(p.getPassengerId() + ": " + p.getName() + " (Balance: " + p.getBalance() + ")");
+            passengerListView.getItems().add(
+                p.getPassengerId() + ": " + p.getName() + " (Balance: " + p.getBalance() + ")"
+            );
         }
     }
 
+    /**
+     * Prints each booked ticket on a separate line.
+     */
     private void updateBookingHistory() {
         bookingHistoryArea.clear();
         List<Ticket> tickets = bookingService.getBookingHistory();
@@ -188,6 +220,9 @@ public class BookingUI extends Application {
         }
     }
 
+    /**
+     * Uniform alert helper for success and error messages.
+     */
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
