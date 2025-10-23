@@ -5,6 +5,8 @@ import gui.components.PassengerListView;
 import gui.components.TrainListView;
 import gui.components.Snackbar;
 import javafx.geometry.Insets;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.*;
@@ -22,8 +24,9 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Composes the app bar, trains card (left), booking history (left),
- * passengers card (right), and booking form (right).
+ * Layout: Left (Trains + History), Right (Passengers + New Booking).
+ * Keeps total price in sync on both train selection and seats edits,
+ * and asks for confirmation with live price before booking.
  */
 public class MainLayout {
 
@@ -69,7 +72,7 @@ public class MainLayout {
         content.setPadding(new Insets(16));
         root.setCenter(content);
 
-        // LEFT COLUMN: Trains + Booking History
+        // Left: Trains + History
         VBox leftCol = new VBox(16);
         leftCol.setFillWidth(true);
 
@@ -82,7 +85,6 @@ public class MainLayout {
         trainsCard.getStyleClass().add("card");
         trainsCard.setPadding(new Insets(14));
 
-        // Booking History card moved under trains
         Label historyLabel = new Label("Booking History");
         historyLabel.getStyleClass().add("section-title");
 
@@ -96,7 +98,7 @@ public class MainLayout {
 
         leftCol.getChildren().addAll(trainsCard, historyCard);
 
-        // RIGHT COLUMN: Passengers + New Booking
+        // Right: Passengers + New Booking
         VBox rightCol = new VBox(16);
         rightCol.setPrefWidth(420);
         rightCol.setFillWidth(true);
@@ -115,6 +117,21 @@ public class MainLayout {
 
         bookingForm = new BookingForm();
 
+        // Keep total price in sync with selected train's unit price
+        trainList.getView().getSelectionModel().selectedItemProperty().addListener((obs, oldT, newT) -> {
+            double price = (newT == null) ? 0.0 : newT.getPricePerSeat();
+            bookingForm.setUnitPrice(price);
+            bookingForm.refreshTotal();
+        });
+
+        // Also recompute total when seats text changes
+        bookingForm.seatsTextProperty().addListener((obs, o, n) -> {
+            Train sel = trainList.getView().getSelectionModel().getSelectedItem();
+            double price = (sel == null) ? 0.0 : sel.getPricePerSeat();
+            bookingForm.setUnitPrice(price);
+            bookingForm.refreshTotal();
+        });
+
         VBox bookingCard = new VBox(12, bookingLabel, bookingForm.getGrid());
         bookingCard.getStyleClass().add("card");
         bookingCard.setPadding(new Insets(14));
@@ -126,7 +143,7 @@ public class MainLayout {
     }
 
     private void wire() {
-        bookingForm.onSubmit((name, balance, seats) -> {
+        bookingForm.onSubmit((name, seats) -> {
             Train selectedTrain = trainList.getView().getSelectionModel().getSelectedItem();
             if (selectedTrain == null) {
                 Snackbar.show("Please select a train.");
@@ -136,34 +153,58 @@ public class MainLayout {
                 Snackbar.show("Name is required.");
                 return;
             }
-            if (balance < 0) {
-                Snackbar.show("Balance cannot be negative.");
-                return;
-            }
             if (seats <= 0) {
                 Snackbar.show("Tickets must be greater than zero.");
                 return;
             }
 
+            double unit = selectedTrain.getPricePerSeat();
+            double total = unit * seats;
+
+            if (!confirmBooking(selectedTrain.getTrainName(), unit, seats, total)) {
+                return; // cancelled
+            }
+
             try {
                 int newId = passengerIdSeq.getAndIncrement();
-                Passenger p = new Passenger(newId, name, balance);
+                Passenger p = new Passenger(newId, name, 0.0);
                 passengerService.addPassenger(p);
 
-                double costPerSeat = selectedTrain.getPricePerSeat();
-                Ticket t = bookingService.bookTicket(p, selectedTrain, seats, costPerSeat);
+                Ticket t = bookingService.bookTicket(p, selectedTrain, seats, unit);
 
                 Snackbar.show("Booked " + seats + " seat(s) on " + selectedTrain.getTrainName());
+
                 refreshAll();
 
                 FileHandler.savePassengers(passengerService.getAllPassengers(), "output/passengers.txt");
                 FileHandler.saveTickets(bookingService.getBookingHistory(), "output/tickets.txt");
 
                 bookingForm.clear();
+
+                // Recompute total for current selection after clear
+                Train reselected = trainList.getView().getSelectionModel().getSelectedItem();
+                double price = (reselected == null) ? 0.0 : reselected.getPricePerSeat();
+                bookingForm.setUnitPrice(price);
+                bookingForm.refreshTotal();
             } catch (Exception ex) {
                 Snackbar.show(ex.getMessage());
             }
         });
+    }
+
+    // Confirmation dialog showing unit price, seats, and total in INR
+    private boolean confirmBooking(String trainName, double unitPrice, int seats, double total) {
+        String message = "Train: " + trainName
+                + "\nPrice per seat: " + currencyFmt.format(unitPrice)
+                + "\nSeats: " + seats
+                + "\nTotal: " + currencyFmt.format(total)
+                + "\n\nProceed with booking?";
+
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirm Booking");
+        alert.setHeaderText("Please confirm your booking");
+        alert.setContentText(message);
+        return alert.showAndWait().filter(btn -> btn == ButtonType.OK).isPresent();
     }
 
     private void refreshAll() {

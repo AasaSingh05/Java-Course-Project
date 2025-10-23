@@ -14,7 +14,7 @@ import models.Passenger;
 import java.util.List;
 
 /**
- * Wrapper for the passengers ListView with a custom card-like row.
+ * Passenger card-style list (no balance shown).
  */
 public class PassengerListView {
     private final ListView<Passenger> list = new ListView<>();
@@ -69,7 +69,7 @@ public class PassengerListView {
                 return;
             }
             title.setText(p.getName() + " (ID " + p.getPassengerId() + ")");
-            subtitle.setText("Balance: " + p.getBalance());
+            subtitle.setText("Passenger"); // no balance shown
             setGraphic(root);
             setText(null);
         }

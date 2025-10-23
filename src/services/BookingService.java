@@ -15,23 +15,21 @@ public class BookingService {
         bookingHistory = Collections.synchronizedList(new ArrayList<>());
     }
 
-    // Book tickets with exception handling
+    // Wallet-less booking: no balance validation/deduction
     public synchronized Ticket bookTicket(Passenger passenger, Train train, int seats, double costPerSeat) throws InvalidBookingException {
         if (seats <= 0) {
             throw new InvalidBookingException("Cannot book zero or negative seats!");
         }
 
-        double totalCost = seats * costPerSeat;
-        if (passenger.getBalance() < totalCost) {
-            throw new InvalidBookingException("Insufficient balance to book tickets!");
-        }
+        // No balance check anymore
 
         boolean booked = train.bookSeats(seats);
         if (!booked) {
             throw new InvalidBookingException("Not enough available seats!");
         }
 
-        passenger.deductBalance(totalCost);
+        // No balance deduction
+
         Ticket ticket = new Ticket(ticketCounter.getAndIncrement(), passenger, train, seats);
         bookingHistory.add(ticket);
         return ticket;
@@ -41,7 +39,7 @@ public class BookingService {
         return bookingHistory;
     }
 
-    // Deadlock simulation
+    // Deadlock simulation unchanged
     public void simulateDeadlock(Passenger passenger1, Train train1, Passenger passenger2, Train train2, int seats, double costPerSeat) {
         Thread t1 = new Thread(() -> {
             synchronized (train1) {

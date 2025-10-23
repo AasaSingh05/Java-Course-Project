@@ -14,8 +14,7 @@ import java.io.FileNotFoundException;
 import java.text.NumberFormat;
 
 /**
- * Card-like cell for trains:
- * [Logo]  [Title + grey subtitle]                            [Bold INR price]
+ * Card-like cell for trains with logo, title, subtitle, and bold INR price.
  */
 class TrainRowCell extends ListCell<Train> {
     private final HBox root = new HBox(14);
