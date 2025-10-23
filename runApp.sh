@@ -1,7 +1,16 @@
 #!/bin/bash
+set -e
 
-javac -d out -cp "libs/sqlite-jdbc-3.45.3.0.jar:/usr/share/openjfx/lib/*" src/**/*.java
+# === CONFIGURATION ===
+JAVA_FX_PATH="$HOME/javafx/javafx-sdk-22/lib"
+JDBC_JAR="libs/sqlite-jdbc-3.45.3.0.jar"
 
-java --module-path /usr/share/openjfx/lib \
+# === COMPILE ===
+echo "Compiling project..."
+javac -d out -cp "$JDBC_JAR:$JAVA_FX_PATH/*" src/**/*.java
+
+# === RUN ===
+echo "Launching Railway Reservation System..."
+java --module-path "$JAVA_FX_PATH" \
      --add-modules javafx.controls,javafx.fxml \
-     -cp "out:libs/sqlite-jdbc-3.45.3.0.jar" Main
+     -cp "out:$JDBC_JAR" Main
