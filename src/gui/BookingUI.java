@@ -2,9 +2,14 @@ package gui;
 
 import javafx.application.Application;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import models.Passenger;
@@ -15,18 +20,23 @@ import services.PassengerService;
 import services.TrainService;
 import persistence.FileHandler;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * JavaFX UI for browsing trains, creating passengers from user input,
- * booking tickets at train-specific prices, and viewing booking history.
+ * Modern dark-mode JavaFX UI:
+ * - Top app bar
+ * - Left: train catalog with card rows (logo, title, remaining seats, bold INR price)
+ * - Right: passengers in card rows, booking form, and booking history
+ * - External stylesheet (resources/css/app.css) for theme, spacing, and typography
  */
 public class BookingUI extends Application {
 
-    // Services provide in-memory data and booking operations.
+    // Services for demo data and booking operations.
     private final TrainService trainService = new TrainService();
     private final PassengerService passengerService = new PassengerService();
     private final BookingService bookingService = new BookingService();
@@ -35,36 +45,76 @@ public class BookingUI extends Application {
     private final AtomicInteger passengerIdSeq = new AtomicInteger(1000);
 
     // UI nodes shared across methods.
-    private ListView<String> trainListView;
-    private ListView<String> passengerListView;
+    private ListView<Train> trainListView;       // typed as Train for custom cell rendering
+    private ListView<String> passengerListView;  // renders card from "id|name|balance" text
     private TextArea bookingHistoryArea;
 
-    // Currency formatting for price rendering and total cost display.
-    private final NumberFormat currencyFmt = NumberFormat.getCurrencyInstance(Locale.getDefault());
+    // Force currency to Indian Rupees with Indian numbering system.
+    private final NumberFormat currencyFmt = NumberFormat.getCurrencyInstance(new Locale("en", "IN"));
 
     @Override
     public void start(Stage primaryStage) {
-        // Root layout and spacing.
-        VBox root = new VBox(10);
-        root.setPadding(new Insets(10));
+        // Root layout with a top app bar and center content area.
+        BorderPane root = new BorderPane();
 
-        // Side-by-side lists: trains and current passengers.
-        HBox listsBox = new HBox(10);
+        // Top app bar with title, styled via CSS.
+        HBox appBar = new HBox();
+        appBar.getStyleClass().add("app-bar");
+        Label title = new Label("Railway Reservation System");
+        title.getStyleClass().add("app-title");
+        appBar.getChildren().add(title);
+        root.setTop(appBar);
+
+        // Main content area: left (trains) and right (passengers + booking + history).
+        HBox content = new HBox(16);
+        content.setPadding(new Insets(16));
+        root.setCenter(content);
+
+        // LEFT COLUMN — Trains card with a custom ListCell.
+        VBox leftCol = new VBox(12);
+        leftCol.setFillWidth(true);
+
+        Label trainsLabel = new Label("Available Trains");
+        trainsLabel.getStyleClass().add("section-title");
 
         trainListView = new ListView<>();
+        trainListView.getStyleClass().add("carded-list");
+        trainListView.setPrefWidth(560);
+        trainListView.setCellFactory(list -> new TrainCardCell(currencyFmt));
         updateTrainList();
-        VBox trainBox = new VBox(5, new Label("Available Trains:"), trainListView);
+
+        VBox trainsCard = new VBox(12, trainsLabel, trainListView);
+        trainsCard.getStyleClass().add("card");
+        trainsCard.setPadding(new Insets(14));
+
+        leftCol.getChildren().addAll(trainsCard);
+
+        // RIGHT COLUMN — Passengers, booking form, and history stacked as cards.
+        VBox rightCol = new VBox(16);
+        rightCol.setFillWidth(true);
+
+        // Passengers card with custom passenger card cells.
+        Label paxLabel = new Label("Passengers");
+        paxLabel.getStyleClass().add("section-title");
 
         passengerListView = new ListView<>();
+        passengerListView.getStyleClass().add("carded-list");
+        passengerListView.setPrefWidth(360);
+        passengerListView.setCellFactory(list -> new PassengerCardCell());
         updatePassengerList();
-        VBox passengerBox = new VBox(5, new Label("Existing Passengers:"), passengerListView);
 
-        listsBox.getChildren().addAll(trainBox, passengerBox);
+        VBox paxCard = new VBox(12, paxLabel, passengerListView);
+        paxCard.getStyleClass().add("card");
+        paxCard.setPadding(new Insets(14));
 
-        // Booking form for creating a passenger and booking seats.
+        // Booking form card.
+        Label bookingLabel = new Label("New Booking");
+        bookingLabel.getStyleClass().add("section-title");
+
         GridPane bookingGrid = new GridPane();
-        bookingGrid.setHgap(10);
-        bookingGrid.setVgap(8);
+        bookingGrid.getStyleClass().add("form-grid");
+        bookingGrid.setHgap(12);
+        bookingGrid.setVgap(10);
 
         TextField nameField = new TextField();
         nameField.setPromptText("Passenger name");
@@ -76,34 +126,43 @@ public class BookingUI extends Application {
         seatsField.setPromptText("Seats to Book");
 
         Button bookButton = new Button("Book Ticket");
+        bookButton.getStyleClass().add("accent-button");
 
-        bookingGrid.addRow(0, new Label("Name:"), nameField);
-        bookingGrid.addRow(1, new Label("Balance:"), balanceField);
-        bookingGrid.addRow(2, new Label("Tickets:"), seatsField);
-        bookingGrid.add(bookButton, 1, 3);
+        bookingGrid.addRow(0, new Label("Name"), nameField);
+        bookingGrid.addRow(1, new Label("Balance"), balanceField);
+        bookingGrid.addRow(2, new Label("Tickets"), seatsField);
 
-        // Area to print successful bookings line-by-line.
+        HBox bookingActions = new HBox(bookButton);
+        bookingActions.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox bookingCard = new VBox(12, bookingLabel, bookingGrid, bookingActions);
+        bookingCard.getStyleClass().add("card");
+        bookingCard.setPadding(new Insets(14));
+
+        // Booking history card.
+        Label historyLabel = new Label("Booking History");
+        historyLabel.getStyleClass().add("section-title");
+
         bookingHistoryArea = new TextArea();
         bookingHistoryArea.setEditable(false);
-        bookingHistoryArea.setPrefHeight(200);
+        bookingHistoryArea.setPrefHeight(160);
+        bookingHistoryArea.getStyleClass().add("history-area");
 
-        root.getChildren().addAll(
-                listsBox,
-                new Label("New Booking:"),
-                bookingGrid,
-                new Label("Booking History:"),
-                bookingHistoryArea
-        );
+        VBox historyCard = new VBox(12, historyLabel, bookingHistoryArea);
+        historyCard.getStyleClass().add("card");
+        historyCard.setPadding(new Insets(14));
 
-        // Booking action:
-        // 1) Validate inputs.
-        // 2) Create a Passenger from the form.
-        // 3) Use the train's price-per-seat for billing.
-        // 4) Persist lists to text files for durability between runs.
+        rightCol.getChildren().addAll(paxCard, bookingCard, historyCard);
+
+        // Layout columns in the main content.
+        content.getChildren().addAll(leftCol, rightCol);
+        HBox.setHgrow(leftCol, Priority.ALWAYS);
+
+        // Booking action: validate, create passenger, book with INR price, refresh, and persist to files.
         bookButton.setOnAction(e -> {
-            String selectedTrain = trainListView.getSelectionModel().getSelectedItem();
+            Train selectedTrain = trainListView.getSelectionModel().getSelectedItem();
             if (selectedTrain == null) {
-                showAlert("Error", "Please select a train.");
+                showSnack("Please select a train.");
                 return;
             }
 
@@ -112,7 +171,7 @@ public class BookingUI extends Application {
             String seatsText = seatsField.getText() == null ? "" : seatsField.getText().trim();
 
             if (name.isEmpty()) {
-                showAlert("Error", "Name is required.");
+                showSnack("Name is required.");
                 return;
             }
 
@@ -121,96 +180,82 @@ public class BookingUI extends Application {
             try {
                 balance = Double.parseDouble(balanceText);
             } catch (NumberFormatException nfe) {
-                showAlert("Error", "Balance must be a valid number.");
+                showSnack("Balance must be a valid number.");
                 return;
             }
             try {
                 seats = Integer.parseInt(seatsText);
             } catch (NumberFormatException nfe) {
-                showAlert("Error", "Tickets must be a whole number.");
+                showSnack("Tickets must be a whole number.");
                 return;
             }
             if (balance < 0) {
-                showAlert("Error", "Balance cannot be negative.");
+                showSnack("Balance cannot be negative.");
                 return;
             }
             if (seats <= 0) {
-                showAlert("Error", "Tickets must be greater than zero.");
+                showSnack("Tickets must be greater than zero.");
                 return;
             }
 
             try {
-                // Parse selected train id from list cell prefix "id: name ..."
-                int trainId = Integer.parseInt(selectedTrain.split(":")[0]);
-
-                Train train = trainService.getTrainById(trainId);
-
-                // Create and add a new passenger to the in-memory store.
                 int newId = passengerIdSeq.getAndIncrement();
                 Passenger newPassenger = new Passenger(newId, name, balance);
                 passengerService.addPassenger(newPassenger);
 
-                // Bill using the train-specific price.
-                double costPerSeat = train.getPricePerSeat();
-                Ticket ticket = bookingService.bookTicket(newPassenger, train, seats, costPerSeat);
+                double costPerSeat = selectedTrain.getPricePerSeat();
+                Ticket ticket = bookingService.bookTicket(newPassenger, selectedTrain, seats, costPerSeat);
 
                 double total = seats * costPerSeat;
-                showAlert("Success", "Ticket booked successfully!\n"
-                        + ticket.toString() + "\nTotal: " + currencyFmt.format(total));
+                showSnack("Booked " + seats + " seat(s) on " + selectedTrain.getTrainName()
+                        + " for " + currencyFmt.format(total));
 
-                // Refresh UI lists and history after booking.
                 updateTrainList();
                 updatePassengerList();
                 updateBookingHistory();
 
-                // Persist to text files for durability.
                 FileHandler.savePassengers(passengerService.getAllPassengers(), "output/passengers.txt");
                 FileHandler.saveTickets(bookingService.getBookingHistory(), "output/tickets.txt");
 
-                // Clear form fields after success.
                 nameField.clear();
                 balanceField.clear();
                 seatsField.clear();
             } catch (Exception ex) {
-                showAlert("Error", ex.getMessage());
+                showSnack(ex.getMessage());
             }
         });
 
-        Scene scene = new Scene(root, 720, 480);
+        // Scene + stylesheet load. Using a file path so it works from your repo.
+        Scene scene = new Scene(root, 1080, 640);
+        scene.getStylesheets().add("file:resources/css/app.css");
         primaryStage.setTitle("Railway Reservation System");
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
     /**
-     * Rebuilds the train list with live availability and formatted price per seat.
+     * Rebuilds the train list with the latest objects (cells render fields).
      */
     private void updateTrainList() {
-        trainListView.getItems().clear();
-        for (Train t : trainService.getAllTrains()) {
-            String price = currencyFmt.format(t.getPricePerSeat());
-            trainListView.getItems().add(
-                t.getTrainId() + ": " + t.getTrainName()
-                + " (Available: " + t.getAvailableSeats() + ")"
-                + " — Price: " + price
-            );
-        }
+        trainListView.getItems().setAll(trainService.getAllTrains());
     }
 
     /**
-     * Shows the current passengers for visibility and quick checks.
+     * Passengers are rendered as card rows from a compact "id|name|balance" string.
+     * This avoids changing the service API; if preferred, swap to ListView<Passenger> and
+     * update the cell to read fields directly.
      */
     private void updatePassengerList() {
         passengerListView.getItems().clear();
         for (Passenger p : passengerService.getAllPassengers()) {
             passengerListView.getItems().add(
-                p.getPassengerId() + ": " + p.getName() + " (Balance: " + p.getBalance() + ")"
+                    p.getPassengerId() + "|" + p.getName() + "|" + p.getBalance()
             );
         }
     }
 
     /**
-     * Prints each booked ticket on a separate line.
+     * Prints each booked ticket summary on its own line.
      */
     private void updateBookingHistory() {
         bookingHistoryArea.clear();
@@ -221,14 +266,137 @@ public class BookingUI extends Application {
     }
 
     /**
-     * Uniform alert helper for success and error messages.
+     * Simple unified information alert (styled like a snackbar via CSS).
      */
-    private void showAlert(String title, String message) {
+    private void showSnack(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
+        alert.setTitle(null);
         alert.setHeaderText(null);
         alert.setContentText(message);
+        alert.getDialogPane().getStyleClass().add("snackbar");
         alert.showAndWait();
+    }
+
+    /**
+     * Custom card-like ListCell for Train rows:
+     * [Logo]  [Title + grey subtitle]                            [Bold INR price]
+     */
+    private static class TrainCardCell extends ListCell<Train> {
+        private final HBox root = new HBox(14);
+        private final ImageView logoView = new ImageView();
+        private final VBox centerBox = new VBox(2);
+        private final Label title = new Label();
+        private final Label subtitle = new Label();
+        private final Label price = new Label();
+        private final Region spacer = new Region();
+
+        private final NumberFormat currencyFmt;
+
+        public TrainCardCell(NumberFormat currencyFmt) {
+            this.currencyFmt = currencyFmt;
+
+            logoView.setFitWidth(42);
+            logoView.setFitHeight(42);
+            logoView.setPreserveRatio(true);
+            logoView.setSmooth(true);
+
+            title.getStyleClass().add("train-title");
+            subtitle.getStyleClass().add("train-subtitle");
+            centerBox.getChildren().addAll(title, subtitle);
+
+            price.getStyleClass().add("train-price");
+
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            root.getChildren().addAll(logoView, centerBox, spacer, price);
+            root.setAlignment(Pos.CENTER_LEFT);
+            root.getStyleClass().add("train-row");
+            root.setPadding(new Insets(10));
+        }
+
+        @Override
+        protected void updateItem(Train train, boolean empty) {
+            super.updateItem(train, empty);
+            if (empty || train == null) {
+                setGraphic(null);
+                setText(null);
+                return;
+            }
+
+            logoView.setImage(loadLogo(train.getTrainId()));
+            title.setText(train.getTrainName());
+            subtitle.setText("Remaining: " + train.getAvailableSeats());
+            price.setText(currencyFmt.format(train.getPricePerSeat()));
+
+            setGraphic(root);
+            setText(null);
+        }
+
+        private Image loadLogo(int trainId) {
+            String specific = "resources/logos/" + trainId + ".png";
+            String fallback = "resources/logos/train.png";
+            try {
+                return new Image(new FileInputStream(specific));
+            } catch (FileNotFoundException e1) {
+                try {
+                    return new Image(new FileInputStream(fallback));
+                } catch (FileNotFoundException e2) {
+                    return null;
+                }
+            }
+        }
+    }
+
+    /**
+     * Passenger card cell that mirrors the train card styling with a simple avatar:
+     * [Avatar]  [Name (bold) + grey "Balance: x"].
+     * Expects each item as "id|name|balance".
+     */
+    private static class PassengerCardCell extends ListCell<String> {
+        private final HBox root = new HBox(14);
+        private final StackPane avatar = new StackPane();
+        private final VBox centerBox = new VBox(2);
+        private final Label title = new Label();
+        private final Label subtitle = new Label();
+
+        public PassengerCardCell() {
+            // Circular avatar with subtle accent-tinted background.
+            avatar.setMinSize(36, 36);
+            avatar.setMaxSize(36, 36);
+            // Inline style for the avatar blob; rest driven by CSS classes.
+            avatar.setStyle("-fx-background-color: #223049; -fx-background-radius: 18;");
+
+            title.getStyleClass().add("passenger-title");
+            subtitle.getStyleClass().add("passenger-subtitle");
+
+            centerBox.getChildren().addAll(title, subtitle);
+
+            root.getChildren().addAll(avatar, centerBox);
+            root.setAlignment(Pos.CENTER_LEFT);
+            root.getStyleClass().add("passenger-row");
+            root.setPadding(new Insets(10));
+        }
+
+        @Override
+        protected void updateItem(String value, boolean empty) {
+            super.updateItem(value, empty);
+            if (empty || value == null) {
+                setGraphic(null);
+                setText(null);
+                return;
+            }
+            // Parse "id|name|balance"
+            String[] parts = value.split("\\|", 3);
+            String id = parts.length > 0 ? parts[0] : "";
+            String name = parts.length > 1 ? parts[1] : "";
+            String balance = parts.length > 2 ? parts[2] : "";
+
+            title.setText(name + " (ID " + id + ")");
+            subtitle.setText("Balance: " + balance);
+
+            setGraphic(root);
+            setText(null);
+        }
     }
 
     public static void main(String[] args) {
