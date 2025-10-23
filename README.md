@@ -31,7 +31,10 @@
 │
 ├─ output/
 │   ├─ tickets.ser                        // Serialized tickets storage
-│   ├─ passengers.txt                      // Passenger info storage
+│   ├─ passengers.txt                     // Passenger info storage
+│
+├─ libs/
+│   ├─sqlite-jdbc-3.45.3.0.jar            // jdbc Library
 │
 └─ README.md
 ```
