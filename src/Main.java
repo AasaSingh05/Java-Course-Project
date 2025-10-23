@@ -1,4 +1,4 @@
-import gui.BookingUI;
+import gui.BookingApp;
 import persistence.DatabaseHandler;
 import persistence.FileHandler;
 import models.Passenger;
@@ -8,33 +8,40 @@ import javafx.application.Application;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Application entry point that:
+ * - Initializes the SQLite database (embedded, no server required)
+ * - Loads passengers and tickets from text files
+ * - Registers a shutdown hook to persist data
+ * - Launches the modular BookingApp UI
+ */
 public class Main {
 
-    // Promote state to fields so lambdas/shutdown hook can access without "effectively final" issues
-    private static final List<Passenger> passengers = new ArrayList<>(); // instance/static fields can be captured and mutated by lambdas
-    private static List<Ticket> tickets = new ArrayList<>(); // list reference stays as a field; contents can change freely 
+    // Shared state persisted on shutdown
+    private static final List<Passenger> passengers = new ArrayList<>();
+    private static List<Ticket> tickets = new ArrayList<>();
 
     public static void main(String[] args) {
-        // --- Initialize Database ---
-        DatabaseHandler.initializeDatabase(); // SQLite is embedded; no server needed when using jdbc:sqlite:... 
+        // Initialize embedded SQLite schema if needed
+        DatabaseHandler.initializeDatabase();
 
-        // --- Load passengers from file ---
-        FileHandler.loadPassengers(passengers, "output/passengers.txt"); // loads into field list to avoid local capture  
+        // Load passengers from text
+        FileHandler.loadPassengers(passengers, "output/passengers.txt");
 
-        // --- Load tickets from file ---
-        List<Ticket> loaded = FileHandler.loadTickets("output/tickets.txt"); // load into temp, then assign once to field  23]
+        // Load tickets from text (returns empty list if file missing in your updated FileHandler)
+        List<Ticket> loaded = FileHandler.loadTickets("output/tickets.txt");
         if (loaded != null) {
-            tickets = loaded; // fields are not subject to "effectively final" restriction for lambdas  
+            tickets = loaded;
         }
 
-        // --- Register shutdown hook before launching UI ---
+        // Persist on graceful shutdown
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            FileHandler.savePassengers(passengers, "output/passengers.txt"); // capturing fields is allowed in lambdas  
-            FileHandler.saveTickets(tickets, "output/ticket.txt"); // persists current state on JVM shutdown  
+            FileHandler.savePassengers(passengers, "output/passengers.txt");
+            FileHandler.saveTickets(tickets, "output/tickets.txt");
             System.out.println("Data saved successfully on exit.");
-        })); // shutdown hooks should be quick and robust; they run on normal JVM termination  
+        }));
 
-        // --- Launch JavaFX GUI ---
-        Application.launch(BookingUI.class, args); // run JavaFX; state lives in fields accessible to controllers if needed 
+        // Launch the new split UI
+        Application.launch(BookingApp.class, args);
     }
 }
