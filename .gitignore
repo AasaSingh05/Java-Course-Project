@@ -1,5 +1,9 @@
 # removing the binaries
 *.class
+out/
 
 #removing intelliJ's build files
 .idea
+
+#sources file
+sources.txt
