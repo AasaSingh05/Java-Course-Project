@@ -22,7 +22,8 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Composes the app bar, trains card, passengers card, booking card, and history card.
+ * Composes the app bar, trains card (left), booking history (left),
+ * passengers card (right), and booking form (right).
  */
 public class MainLayout {
 
@@ -32,7 +33,6 @@ public class MainLayout {
     private final PassengerService passengerService;
     private final BookingService bookingService;
 
-    // Not final because they are assigned in build()
     private TrainListView trainList;
     private PassengerListView passengerList;
     private BookingForm bookingForm;
@@ -69,7 +69,7 @@ public class MainLayout {
         content.setPadding(new Insets(16));
         root.setCenter(content);
 
-        // Left: trains
+        // LEFT COLUMN: Trains + Booking History
         VBox leftCol = new VBox(16);
         leftCol.setFillWidth(true);
 
@@ -81,9 +81,22 @@ public class MainLayout {
         VBox trainsCard = new VBox(12, trainsLabel, trainList.getView());
         trainsCard.getStyleClass().add("card");
         trainsCard.setPadding(new Insets(14));
-        leftCol.getChildren().add(trainsCard);
 
-        // Right: passengers + booking + history
+        // Booking History card moved under trains
+        Label historyLabel = new Label("Booking History");
+        historyLabel.getStyleClass().add("section-title");
+
+        historyArea.setEditable(false);
+        historyArea.setPrefHeight(180);
+        historyArea.getStyleClass().add("history-area");
+
+        VBox historyCard = new VBox(12, historyLabel, historyArea);
+        historyCard.getStyleClass().add("card");
+        historyCard.setPadding(new Insets(14));
+
+        leftCol.getChildren().addAll(trainsCard, historyCard);
+
+        // RIGHT COLUMN: Passengers + New Booking
         VBox rightCol = new VBox(16);
         rightCol.setPrefWidth(420);
         rightCol.setFillWidth(true);
@@ -106,18 +119,7 @@ public class MainLayout {
         bookingCard.getStyleClass().add("card");
         bookingCard.setPadding(new Insets(14));
 
-        Label historyLabel = new Label("Booking History");
-        historyLabel.getStyleClass().add("section-title");
-
-        historyArea.setEditable(false);
-        historyArea.setPrefHeight(140);
-        historyArea.getStyleClass().add("history-area");
-
-        VBox historyCard = new VBox(12, historyLabel, historyArea);
-        historyCard.getStyleClass().add("card");
-        historyCard.setPadding(new Insets(14));
-
-        rightCol.getChildren().addAll(paxCard, bookingCard, historyCard);
+        rightCol.getChildren().addAll(paxCard, bookingCard);
 
         content.getChildren().addAll(leftCol, rightCol);
         HBox.setHgrow(leftCol, Priority.ALWAYS);
@@ -151,9 +153,7 @@ public class MainLayout {
                 double costPerSeat = selectedTrain.getPricePerSeat();
                 Ticket t = bookingService.bookTicket(p, selectedTrain, seats, costPerSeat);
 
-                Snackbar.show("Booked " + seats + " seat(s) on " + selectedTrain.getTrainName()
-                        + " for " + currencyFmt.format(seats * costPerSeat));
-
+                Snackbar.show("Booked " + seats + " seat(s) on " + selectedTrain.getTrainName());
                 refreshAll();
 
                 FileHandler.savePassengers(passengerService.getAllPassengers(), "output/passengers.txt");
