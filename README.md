@@ -34,7 +34,9 @@
 │   ├─ passengers.txt                     // Passenger info storage
 │
 ├─ libs/
-│   ├─sqlite-jdbc-3.45.3.0.jar            // jdbc Library
+│   ├─sqlite-jdbc-3.45.3.0.jar            // Jdbc Library
+│
+├─ runApp.sh                              // Bash compile and run script
 │
 └─ README.md
 ```
