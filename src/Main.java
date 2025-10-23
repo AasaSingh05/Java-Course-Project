@@ -42,6 +42,6 @@ public class Main {
         }));
 
         // Launch the new split UI
-        Application.launch(BookingApp.class, args);
+        Application.launch(gui.BookingApp.class, args);
     }
 }

@@ -21,6 +21,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Composes the app bar, trains card, passengers card, booking card, and history card.
+ */
 public class MainLayout {
 
     private final BorderPane root = new BorderPane();
@@ -29,9 +32,10 @@ public class MainLayout {
     private final PassengerService passengerService;
     private final BookingService bookingService;
 
-    private final TrainListView trainList;
-    private final PassengerListView passengerList;
-    private final BookingForm bookingForm;
+    // Not final because they are assigned in build()
+    private TrainListView trainList;
+    private PassengerListView passengerList;
+    private BookingForm bookingForm;
 
     private final TextArea historyArea = new TextArea();
     private final NumberFormat currencyFmt = NumberFormat.getCurrencyInstance(new Locale("en", "IN"));
@@ -52,7 +56,7 @@ public class MainLayout {
     }
 
     private void build() {
-        // Top bar
+        // App bar
         HBox appBar = new HBox();
         appBar.getStyleClass().add("app-bar");
         Label title = new Label("Railway Reservation System");
@@ -60,12 +64,12 @@ public class MainLayout {
         appBar.getChildren().add(title);
         root.setTop(appBar);
 
-        // Main content
+        // Content
         HBox content = new HBox(16);
         content.setPadding(new Insets(16));
         root.setCenter(content);
 
-        // Left: trains card
+        // Left: trains
         VBox leftCol = new VBox(16);
         leftCol.setFillWidth(true);
 
@@ -73,6 +77,7 @@ public class MainLayout {
         trainsLabel.getStyleClass().add("section-title");
 
         trainList = new TrainListView();
+
         VBox trainsCard = new VBox(12, trainsLabel, trainList.getView());
         trainsCard.getStyleClass().add("card");
         trainsCard.setPadding(new Insets(14));
@@ -87,6 +92,7 @@ public class MainLayout {
         paxLabel.getStyleClass().add("section-title");
 
         passengerList = new PassengerListView();
+
         VBox paxCard = new VBox(12, paxLabel, passengerList.getView());
         paxCard.getStyleClass().add("card");
         paxCard.setPadding(new Insets(14));
@@ -95,6 +101,7 @@ public class MainLayout {
         bookingLabel.getStyleClass().add("section-title");
 
         bookingForm = new BookingForm();
+
         VBox bookingCard = new VBox(12, bookingLabel, bookingForm.getGrid());
         bookingCard.getStyleClass().add("card");
         bookingCard.setPadding(new Insets(14));
@@ -118,7 +125,7 @@ public class MainLayout {
 
     private void wire() {
         bookingForm.onSubmit((name, balance, seats) -> {
-            Train selectedTrain = trainList.getSelectionModel().getSelectedItem();
+            Train selectedTrain = trainList.getView().getSelectionModel().getSelectedItem();
             if (selectedTrain == null) {
                 Snackbar.show("Please select a train.");
                 return;

@@ -1,16 +1,21 @@
 package gui.components;
 
 import javafx.beans.binding.Bindings;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
-import javafx.scene.layout.*;
-import javafx.scene.control.Label;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import models.Passenger;
 
 import java.util.List;
 
+/**
+ * Wrapper for the passengers ListView with a custom card-like row.
+ */
 public class PassengerListView {
     private final ListView<Passenger> list = new ListView<>();
 

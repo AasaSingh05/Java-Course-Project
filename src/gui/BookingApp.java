@@ -8,16 +8,17 @@ import services.BookingService;
 import services.PassengerService;
 import services.TrainService;
 
+/**
+ * Application entry for the split UI composition.
+ */
 public class BookingApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        // Services
         TrainService trainService = new TrainService();
         PassengerService passengerService = new PassengerService();
         BookingService bookingService = new BookingService();
 
-        // Root composed layout
         MainLayout root = new MainLayout(trainService, passengerService, bookingService);
 
         Scene scene = new Scene(root.getRoot(), 1080, 640);

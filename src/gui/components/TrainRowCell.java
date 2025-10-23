@@ -13,6 +13,10 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.text.NumberFormat;
 
+/**
+ * Card-like cell for trains:
+ * [Logo]  [Title + grey subtitle]                            [Bold INR price]
+ */
 class TrainRowCell extends ListCell<Train> {
     private final HBox root = new HBox(14);
     private final ImageView logoView = new ImageView();

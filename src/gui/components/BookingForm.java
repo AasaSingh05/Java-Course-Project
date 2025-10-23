@@ -6,11 +6,9 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-
 public class BookingForm {
 
+    @FunctionalInterface
     public interface SubmitHandler {
         void handle(String name, double balance, int seats);
     }
@@ -36,6 +34,7 @@ public class BookingForm {
         grid.addRow(0, new Label("Name"), nameField);
         grid.addRow(1, new Label("Balance"), balanceField);
         grid.addRow(2, new Label("Tickets"), seatsField);
+
         HBox actions = new HBox(bookButton);
         actions.setAlignment(Pos.CENTER_RIGHT);
         actions.setPadding(new Insets(0, 0, 0, 0));
@@ -57,13 +56,13 @@ public class BookingForm {
             try {
                 balance = Double.parseDouble(bal);
             } catch (Exception ex) {
-                gui.components.Snackbar.show("Balance must be a valid number.");
+                Snackbar.show("Balance must be a valid number.");
                 return;
             }
             try {
                 seatCount = Integer.parseInt(seats);
             } catch (Exception ex) {
-                gui.components.Snackbar.show("Tickets must be a whole number.");
+                Snackbar.show("Tickets must be a whole number.");
                 return;
             }
             handler.handle(name, balance, seatCount);
