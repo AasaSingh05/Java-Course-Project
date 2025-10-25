@@ -4,6 +4,8 @@ set -euo pipefail
 # -------- Config --------
 JAVA_FX_PATH="/home/bigmannova/javafx/javafx-sdk-22.0.2/lib"
 JDBC_JAR="libs/sqlite-jdbc-3.45.3.0.jar"
+SLF4J_API="libs/slf4j-api-2.0.9.jar"
+SLF4J_SIMPLE="libs/slf4j-simple-2.0.9.jar"
 
 SRC_DIR="src"
 OUT_DIR="out"
@@ -31,7 +33,7 @@ javac \
   -d "$OUT_DIR" \
   --module-path "$JAVA_FX_PATH" \
   --add-modules javafx.controls,javafx.fxml \
-  -cp "$JDBC_JAR" \
+  -cp "$JDBC_JAR:$SLF4J_API:$SLF4J_SIMPLE" \
   @sources.txt
 
 # Optional: sanity check that Main.class exists in expected location
@@ -45,5 +47,5 @@ echo "Launching Railway Reservation System..."
 java \
   --module-path "$JAVA_FX_PATH" \
   --add-modules javafx.controls,javafx.fxml \
-  -cp "$OUT_DIR:$JDBC_JAR" \
+  -cp "$OUT_DIR:$JDBC_JAR:$SLF4J_API:$SLF4J_SIMPLE" \
   "$FQCN"
