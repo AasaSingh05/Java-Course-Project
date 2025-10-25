@@ -4,15 +4,15 @@ import gui.components.BookingForm;
 import gui.components.PassengerListView;
 import gui.components.TrainListView;
 import gui.components.Snackbar;
+import demo.DeadlockDemo;
+import demo.MultiBookRunner;
 import javafx.geometry.Insets;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
+import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import models.Passenger;
 import models.Ticket;
 import models.Train;
+import persistence.DatabaseHandler;
 import persistence.FileHandler;
 import services.BookingService;
 import services.PassengerService;
@@ -25,8 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Layout: Left (Trains + History), Right (Passengers + New Booking).
- * Keeps total price in sync on both train selection and seats edits,
- * and asks for confirmation with live price before booking.
+ * Includes demo menu, JDBC operations, real-time price updates, and confirmation dialog.
  */
 public class MainLayout {
 
@@ -59,13 +58,19 @@ public class MainLayout {
     }
 
     private void build() {
+        // Demo menu bar
+        MenuBar menuBar = createDemoMenu();
+        
         // App bar
         HBox appBar = new HBox();
         appBar.getStyleClass().add("app-bar");
         Label title = new Label("Railway Reservation System");
         title.getStyleClass().add("app-title");
         appBar.getChildren().add(title);
-        root.setTop(appBar);
+        
+        // Combine menu and app bar
+        VBox topContainer = new VBox(menuBar, appBar);
+        root.setTop(topContainer);
 
         // Content
         HBox content = new HBox(16);
@@ -124,7 +129,7 @@ public class MainLayout {
             bookingForm.refreshTotal();
         });
 
-        // Also recompute total when seats text changes
+        // Also recompute total when seats text changes (real-time update)
         bookingForm.seatsTextProperty().addListener((obs, o, n) -> {
             Train sel = trainList.getView().getSelectionModel().getSelectedItem();
             double price = (sel == null) ? 0.0 : sel.getPricePerSeat();
@@ -140,6 +145,40 @@ public class MainLayout {
 
         content.getChildren().addAll(leftCol, rightCol);
         HBox.setHgrow(leftCol, Priority.ALWAYS);
+    }
+
+    private MenuBar createDemoMenu() {
+        MenuBar menuBar = new MenuBar();
+        Menu demoMenu = new Menu("Demos");
+        
+        MenuItem concurrency = new MenuItem("Run Concurrency Demo");
+        concurrency.setOnAction(e -> {
+            Train train = trainService.getTrainById(1);
+            if (train != null) {
+                System.out.println("\n=== CONCURRENCY DEMO ===");
+                MultiBookRunner.run(bookingService, train, 5, 3, train.getPricePerSeat());
+                refreshAll(); // Refresh UI after demo
+                Snackbar.show("Concurrency demo completed. Check console output.");
+            }
+        });
+        
+        MenuItem deadlock = new MenuItem("Run Deadlock Demo");
+        deadlock.setOnAction(e -> {
+            Passenger p1 = new Passenger(9001, "Agent A", 1000);
+            Passenger p2 = new Passenger(9002, "Agent B", 1000);
+            Train t1 = trainService.getTrainById(1);
+            Train t2 = trainService.getTrainById(2);
+            if (t1 != null && t2 != null) {
+                System.out.println("\n=== DEADLOCK DEMO ===");
+                DeadlockDemo.run(bookingService, p1, t1, p2, t2);
+                Snackbar.show("Deadlock demo completed. Check console output.");
+            }
+        });
+        
+        demoMenu.getItems().addAll(concurrency, deadlock);
+        menuBar.getMenus().add(demoMenu);
+        
+        return menuBar;
     }
 
     private void wire() {
@@ -161,8 +200,9 @@ public class MainLayout {
             double unit = selectedTrain.getPricePerSeat();
             double total = unit * seats;
 
+            // Show confirmation dialog with live price
             if (!confirmBooking(selectedTrain.getTrainName(), unit, seats, total)) {
-                return; // cancelled
+                return; // User cancelled
             }
 
             try {
@@ -170,12 +210,16 @@ public class MainLayout {
                 Passenger p = new Passenger(newId, name, 0.0);
                 passengerService.addPassenger(p);
 
+                // JDBC demonstration - insert passenger to database
+                DatabaseHandler.insertPassenger(p.getPassengerId(), p.getName());
+
                 Ticket t = bookingService.bookTicket(p, selectedTrain, seats, unit);
 
                 Snackbar.show("Booked " + seats + " seat(s) on " + selectedTrain.getTrainName());
 
                 refreshAll();
 
+                // Persist to files
                 FileHandler.savePassengers(passengerService.getAllPassengers(), "output/passengers.txt");
                 FileHandler.saveTickets(bookingService.getBookingHistory(), "output/tickets.txt");
 

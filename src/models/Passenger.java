@@ -3,6 +3,8 @@ package models;
 import java.io.Serializable;
 
 public class Passenger implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
     private int passengerId;
     private String name;
     private double balance;
@@ -13,24 +15,16 @@ public class Passenger implements Serializable {
         this.balance = balance;
     }
 
-    public int getPassengerId() {
-        return passengerId;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public double getBalance() {
-        return balance;
-    }
+    public int getPassengerId() { return passengerId; }
+    public String getName() { return name; }
+    public double getBalance() { return balance; }
 
     public void deductBalance(double amount) {
-        balance -= amount;
+        this.balance -= amount;
     }
 
     @Override
     public String toString() {
-        return "Passenger [ID=" + passengerId + ", Name=" + name + ", Balance=" + balance + "]";
+        return "Passenger[" + passengerId + "] " + name + " (Balance: " + balance + ")";
     }
 }
